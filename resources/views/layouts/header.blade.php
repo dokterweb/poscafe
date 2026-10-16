@@ -61,16 +61,6 @@
             </li>
             
             <li class="nav-item">
-              <a class="nav-link" href="{{route('sales.index')}}" >
-                <span class="nav-link-icon d-md-none d-lg-inline-block">
-                  <i class="nav-icon fas fa-cog"></i>
-                </span>
-                <span class="nav-link-title">
-                  Sale
-                </span>
-              </a>
-            </li>
-            <li class="nav-item">
               <a class="nav-link" href="{{route('stock-movements.index')}}">
                 <span class="nav-link-icon d-md-none d-lg-inline-block">
                   <i class="nav-icon fas fa-cog"></i>
@@ -79,6 +69,50 @@
                   Stok
                 </span>
               </a>
+            </li>
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#navbar-help" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" >
+                <span class="nav-link-icon d-md-none d-lg-inline-block">
+                  <i class="nav-icon fas fa-cog"></i>
+                </span>
+                <span class="nav-link-title">Transaksi</span>
+              </a>
+              <div class="dropdown-menu">
+                <a class="dropdown-item {{request()->routeIs('pos.index')?'active':''}}" href="{{route('pos.index')}}">
+                  POS
+                </a>
+                 <a class="dropdown-item {{request()->routeIs('pos.mejas.index')?'active':''}}" href="{{route('pos.mejas.index')}}">
+                  Meja
+                </a>
+                 <a class="dropdown-item {{request()->routeIs('pos.laporan-penjualan.index')?'active':''}}" href="{{route('pos.laporan-penjualan.index')}}">
+                  Laporan
+                </a>
+                <a class="dropdown-item {{request()->routeIs('consignment-reports.index')?'active':''}}" href="{{route('consignment-reports.index')}}">
+                  Laporan Mitra
+                </a>
+                <a class="dropdown-item {{request()->routeIs('consignment-settlements.index')?'active':''}}" href="{{route('consignment-settlements.index')}}">
+                  Bayar Mitra
+                </a>
+              </div>
+            </li>
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#navbar-help" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" >
+                <span class="nav-link-icon d-md-none d-lg-inline-block">
+                  <i class="nav-icon fas fa-cog"></i>
+                </span>
+                <span class="nav-link-title">Mitra</span>
+              </a>
+              <div class="dropdown-menu">
+                <a class="dropdown-item {{request()->routeIs('consignment-reports.index')?'active':''}}" href="{{route('consignment-reports.index')}}">
+                  Laporan Mitra
+                </a>
+                <a class="dropdown-item {{request()->routeIs('consignment-settlements.index')?'active':''}}" href="{{route('consignment-settlements.index')}}">
+                  Bayar Mitra
+                </a>
+                <a class="dropdown-item {{request()->routeIs('consignment-returns.index')?'active':''}}" href="{{route('consignment-returns.index')}}">
+                  Return Barang
+                </a>
+              </div>
             </li>
              <li class="nav-item dropdown">
               <a class="nav-link dropdown-toggle" href="#navbar-help" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" >
@@ -132,6 +166,12 @@
                  <a class="dropdown-item {{request()->routeIs('customers.index')?'active':''}}" href="{{route('customers.index')}}">
                   Customer
                 </a>
+                <a class="dropdown-item {{request()->routeIs('option-groups.index')?'active':''}}" href="{{route('option-groups.index')}}">
+                  Tambahan
+                </a>
+                 <a class="dropdown-item {{request()->routeIs('mejas.index')?'active':''}}" href="{{route('mejas.index')}}">
+                  Meja
+                </a>
               </div>
             </li>
 
@@ -150,7 +190,5 @@
       </div>
       @endrole
     
-
-     
     </div>
   </header>

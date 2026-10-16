@@ -3,8 +3,16 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\ConsignmentPartnerController;
+use App\Http\Controllers\ConsignmentReportController;
+use App\Http\Controllers\ConsignmentReturnController;
+use App\Http\Controllers\ConsignmentSettlementController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\LaporanPenjualanController;
+use App\Http\Controllers\MejaController;
+use App\Http\Controllers\OptionGroupController;
+use App\Http\Controllers\PosController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseController;
@@ -57,12 +65,42 @@ Route::get('/suppliers/{supplier}/edit', [SupplierController::class, 'edit'])->m
 Route::put('/suppliers/{supplier}', [SupplierController::class, 'update'])->middleware('role:admin')->name('suppliers.update');
 Route::delete('/suppliers/{supplier}', [SupplierController::class, 'destroy'])->middleware('role:admin')->name('suppliers.destroy');
 
-Route::get('/products', [ProductController::class, 'index'])->middleware('role:admin')->name('products.index');
-Route::post('/products', [ProductController::class, 'store'])->middleware('role:admin')->name('products.store');
-Route::get('/products/{product}/edit', [ProductController::class, 'edit'])->middleware('role:admin')->name('products.edit');
-Route::put('/products/{product}', [ProductController::class, 'update'])->middleware('role:admin')->name('products.update');
-Route::delete('/products/{product}', [ProductController::class, 'destroy'])->middleware('role:admin')->name('products.destroy');
+Route::middleware('role:admin')->group(function () {
+    Route::get('/products', [ProductController::class, 'index'])
+        ->name('products.index');
 
+    Route::get('/products/create', [ProductController::class, 'create'])
+        ->name('products.create');
+
+    Route::post('/products', [ProductController::class, 'store'])
+        ->name('products.store');
+
+    Route::get('/products/{product}/edit', [ProductController::class, 'edit'])
+        ->name('products.edit');
+
+    Route::put('/products/{product}', [ProductController::class, 'update'])
+        ->name('products.update');
+
+    Route::delete('/products/{product}', [ProductController::class, 'destroy'])
+        ->name('products.destroy');
+});
+
+Route::prefix('products/consignment')
+    ->name('products.consignment.')
+    ->group(function () {
+        Route::get('/', [ProductController::class, 'consignmentIndex'])->name('index');
+        Route::get('/create', [ProductController::class, 'createConsignment'])->name('create');
+        Route::post('/', [ProductController::class, 'storeConsignment'])->name('store');
+        Route::get('/{product}/edit', [ProductController::class, 'editConsignment'])->name('edit');
+        Route::put('/{product}', [ProductController::class, 'updateConsignment'])->name('update');
+         Route::get('/{product}/stock-in',[ProductController::class, 'createConsignmentStockIn'])
+        ->name('stock-in.create');
+        Route::post('/{product}/stock-in',[ProductController::class, 'storeConsignmentStockIn'])
+        ->name('stock-in.store');
+    });
+       
+    
+    
 Route::get('/customers', [CustomerController::class, 'index'])->middleware('role:admin')->name('customers.index');
 Route::post('/customers', [CustomerController::class, 'store'])->middleware('role:admin')->name('customers.store');
 Route::get('/customers/{customer}/edit', [CustomerController::class, 'edit'])->middleware('role:admin')->name('customers.edit');
@@ -100,3 +138,72 @@ Route::get('/stock-adjustments',[StockAdjustmentController::class, 'index'])->mi
 Route::get('/stock-adjustments/create',[StockAdjustmentController::class, 'create'])->middleware('role:admin')->name('stock-adjustments.create');
 Route::post('/stock-adjustments',[StockAdjustmentController::class, 'store'])->middleware('role:admin')->name('stock-adjustments.store');
 Route::get('/stock-adjustments/search-products',[StockAdjustmentController::class, 'searchProducts'])->middleware('role:admin')->name('stock-adjustments.search-products');
+
+Route::get('/option-groups/{option_group}/data',[OptionGroupController::class, 'editData'])->name('option-groups.data');
+Route::resource('option-groups', OptionGroupController::class)->only(['index', 'store', 'update', 'destroy']);
+
+Route::middleware('role:admin')->group(function () {
+    Route::get('/mejas', [MejaController::class, 'index'])
+        ->name('mejas.index');
+
+    Route::get('/mejas/create', [MejaController::class, 'create'])
+        ->name('mejas.create');
+
+    Route::post('/mejas', [MejaController::class, 'store'])
+        ->name('mejas.store');
+
+    Route::get('/mejas/{meja}/edit', [MejaController::class, 'edit'])
+        ->name('mejas.edit');
+
+    Route::put('/mejas/{meja}', [MejaController::class, 'update'])
+        ->name('mejas.update');
+
+    Route::delete('/mejas/{meja}', [MejaController::class, 'destroy'])
+        ->name('mejas.destroy');
+});
+
+Route::middleware('role:admin')->group(function () {
+    Route::get('/pos', [PosController::class, 'index'])->name('pos.index');
+    Route::post('/pos/orders', [PosController::class, 'store'])->name('pos.orders.store');
+    Route::get('/pos/orders/{order}', [PosController::class, 'showOrder'])->name('pos.orders.show');
+    Route::get('/pos/mejas', [PosController::class, 'mejaIndex'])->name('pos.mejas.index');
+    Route::patch('/pos/orders/{order}/items/{item}', [PosController::class,'updateOrderItem',])->name('pos.orders.items.update');
+    Route::delete('/pos/orders/{order}/items/{item}', [PosController::class,'destroyOrderItem',])->name('pos.orders.items.destroy');
+    Route::post('/pos/orders/{order}/items',[PosController::class, 'addOrderItem'])->name('pos.orders.items.store');
+    Route::post('/pos/orders/{order}/pay',[PosController::class, 'payOrder'])->name('pos.orders.pay');
+    Route::get('/pos/orders/{order}/receipt', [PosController::class, 'receipt'])->name('pos.orders.receipt');
+});
+
+
+Route::get('/pos/laporan-penjualan', [LaporanPenjualanController::class,'index'])->name('pos.laporan-penjualan.index');
+Route::get('/pos/laporan-penjualan/export', [
+    LaporanPenjualanController::class,
+    'export',
+])->name('pos.laporan-penjualan.export');
+
+Route::resource('pos/consignment-partners',ConsignmentPartnerController::class)
+    ->except(['show', 'destroy'])->parameters(['consignment-partners' => 'consignment_partner',])
+    ->names('pos.consignment-partners');
+
+Route::get('/consignment-reports',[ConsignmentReportController::class, 'index'])->name('consignment-reports.index');
+Route::prefix('consignment-settlements')
+    ->name('consignment-settlements.')
+    ->controller(ConsignmentSettlementController::class)
+    ->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('/create', 'create')->name('create');
+        Route::post('/', 'store')->name('store');
+        Route::get('/{settlement}', 'show')->whereNumber('settlement')->name('show');
+        Route::post('/{settlement}/pay', 'pay')->whereNumber('settlement')->name('pay');
+    });
+
+Route::prefix('consignment-returns')
+    ->name('consignment-returns.')
+    ->controller(ConsignmentReturnController::class)
+    ->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('/create', 'create')->name('create');
+        Route::post('/', 'store')->name('store');
+        Route::get('/{consignmentReturn}', 'show')->whereNumber('consignmentReturn')->name('show');
+        Route::post('/{consignmentReturn}/process', 'process')->whereNumber('consignmentReturn')->name('process');
+    });

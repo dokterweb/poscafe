@@ -2,242 +2,143 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Customer;
-use App\Models\Product;
-use App\Models\Purchase;
-use App\Models\Sale;
-use App\Models\Supplier;
+use App\Models\Order;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
+    
     /**
-     * Dashboard Admin
+     * Dashboard Penjualan PosCafe
      */
     public function indexadmin()
     {
-        // ======================================================
-        // DATE
-        // ======================================================
-
         $today = Carbon::today();
+        $startOfMonth = Carbon::now()->startOfMonth();
+        $endOfMonth = Carbon::now()->endOfMonth();
 
-        $startOfMonth = Carbon::now()
-            ->startOfMonth();
+        /*
+        |--------------------------------------------------------------------------
+        | PENJUALAN HARI INI
+        |--------------------------------------------------------------------------
+        */
 
-        $endOfMonth = Carbon::now()
-            ->endOfMonth();
+        $ordersToday = Order::query()
+            ->where('status', 'paid')
+            ->whereHas('payment', function ($query) use ($today) {
+                $query->whereDate('paid_at', $today);
+            });
 
+        $salesToday = (clone $ordersToday)->count();
 
-        // ======================================================
-        // PENJUALAN HARI INI
-        // ======================================================
+        $salesTodayAmount = (clone $ordersToday)->sum('total');
 
-        $salesToday = Sale::query()
-            ->whereDate(
-                'date',
-                $today
-            )
-            ->count();
+        $averageTransactionToday = $salesToday > 0
+            ? $salesTodayAmount / $salesToday
+            : 0;
 
+        /*
+        |--------------------------------------------------------------------------
+        | PENJUALAN BULAN INI
+        |--------------------------------------------------------------------------
+        */
 
-        $salesTodayAmount = Sale::query()
-            ->whereDate(
-                'date',
-                $today
-            )
-            ->sum('final_price');
+        $ordersThisMonth = Order::query()
+            ->where('status', 'paid')
+            ->whereHas('payment', function ($query) use (
+                $startOfMonth,
+                $endOfMonth
+            ) {
+                $query->whereBetween('paid_at', [
+                    $startOfMonth,
+                    $endOfMonth,
+                ]);
+            });
 
+        $salesThisMonth = (clone $ordersThisMonth)->count();
 
-        // ======================================================
-        // PENJUALAN BULAN INI
-        // ======================================================
+        $salesThisMonthAmount = (clone $ordersThisMonth)->sum('total');
 
-        $salesThisMonth = Sale::query()
-            ->whereBetween(
-                'date',
-                [
-                    $startOfMonth->toDateString(),
-                    $endOfMonth->toDateString(),
-                ]
-            )
-            ->count();
+        /*
+        |--------------------------------------------------------------------------
+        | REKAP METODE PEMBAYARAN HARI INI
+        |--------------------------------------------------------------------------
+        */
 
+        $paymentSummary = DB::table('payments')
+            ->join('orders', 'orders.id', '=', 'payments.order_id')
+            ->where('orders.status', 'paid')
+            ->whereDate('payments.paid_at', $today)
+            ->selectRaw('
+                payments.payment_method,
+                COUNT(*) AS jumlah_transaksi,
+                COALESCE(SUM(orders.total), 0) AS total
+            ')
+            ->groupBy('payments.payment_method')
+            ->get()
+            ->keyBy('payment_method');
 
-        $salesThisMonthAmount = Sale::query()
-            ->whereBetween(
-                'date',
-                [
-                    $startOfMonth->toDateString(),
-                    $endOfMonth->toDateString(),
-                ]
-            )
-            ->sum('final_price');
+        /*
+        |--------------------------------------------------------------------------
+        | GRAFIK PENJUALAN 7 HARI TERAKHIR
+        |--------------------------------------------------------------------------
+        */
 
+        $chartStart = Carbon::today()->subDays(6);
 
-        // ======================================================
-        // PEMBELIAN BULAN INI
-        // ======================================================
-
-        $purchasesThisMonth = Purchase::query()
-            ->whereBetween(
-                'date',
-                [
-                    $startOfMonth->toDateString(),
-                    $endOfMonth->toDateString(),
-                ]
-            )
-            ->count();
-
-
-        $purchasesThisMonthAmount = Purchase::query()
-            ->whereBetween(
-                'date',
-                [
-                    $startOfMonth->toDateString(),
-                    $endOfMonth->toDateString(),
-                ]
-            )
-            ->sum('total');
-
-
-        // ======================================================
-        // TOTAL MASTER DATA
-        // ======================================================
-
-        $totalProducts = Product::query()
-            ->where('is_active', true)
-            ->count();
-
-
-        $totalCustomers = Customer::count();
-
-        $totalSuppliers = Supplier::count();
-
-
-        // ======================================================
-        // TOTAL STOCK
-        // ======================================================
-
-        $totalStock = Product::query()
-            ->where('is_active', true)
-            ->sum('stock');
-
-
-        // ======================================================
-        // TRANSAKSI BELUM LUNAS
-        // ======================================================
-
-        $unpaidSales = Sale::query()
-            ->where(
-                'payment_status',
-                'belum_lunas'
-            )
-            ->count();
-
-
-        $unpaidSalesAmount = Sale::query()
-            ->where(
-                'payment_status',
-                'belum_lunas'
-            )
-            ->sum('final_price');
-
-
-        // ======================================================
-        // GRAFIK PENJUALAN 7 HARI TERAKHIR
-        // ======================================================
+        $dailySales = DB::table('payments')
+            ->join('orders', 'orders.id', '=', 'payments.order_id')
+            ->where('orders.status', 'paid')
+            ->whereBetween('payments.paid_at', [
+                $chartStart->copy()->startOfDay(),
+                Carbon::today()->endOfDay(),
+            ])
+            ->selectRaw('
+                DATE(payments.paid_at) AS tanggal,
+                COALESCE(SUM(orders.total), 0) AS omzet
+            ')
+            ->groupByRaw('DATE(payments.paid_at)')
+            ->pluck('omzet', 'tanggal');
 
         $salesChart = collect();
 
         for ($i = 6; $i >= 0; $i--) {
-
-            $date = Carbon::today()
-                ->subDays($i);
-
-
-            $amount = Sale::query()
-                ->whereDate(
-                    'date',
-                    $date
-                )
-                ->sum('final_price');
-
+            $date = Carbon::today()->subDays($i);
+            $dateKey = $date->toDateString();
 
             $salesChart->push([
-
-                'date' =>
-                    $date->format('Y-m-d'),
-
-                'label' =>
-                    $date->translatedFormat('D'),
-
-                'amount' =>
-                    (float) $amount,
-
+                'date' => $dateKey,
+                'label' => $date->translatedFormat('D'),
+                'amount' => (float) ($dailySales[$dateKey] ?? 0),
             ]);
         }
 
+        /*
+        |--------------------------------------------------------------------------
+        | TRANSAKSI TERBARU
+        |--------------------------------------------------------------------------
+        */
 
-        // ======================================================
-        // PENJUALAN TERBARU
-        // ======================================================
-
-        $recentSales = Sale::query()
-            ->with([
-                'customer',
-                'user',
-            ])
-            ->latest('id')
+        $recentOrders = Order::query()
+            ->join('payments', 'payments.order_id', '=', 'orders.id')
+            ->where('orders.status', 'paid')
+            ->select('orders.*')
+            ->with(['payment', 'meja'])
+            ->orderByDesc('payments.paid_at')
             ->limit(8)
             ->get();
 
-
-        // ======================================================
-        // PEMBELIAN TERBARU
-        // ======================================================
-
-        $recentPurchases = Purchase::query()
-            ->with([
-                'supplier',
-                'user',
-            ])
-            ->latest('id')
-            ->limit(8)
-            ->get();
-
-
-        // ======================================================
-        // RETURN
-        // ======================================================
-
-        return view(
-            'dashboard.admin',
-            compact(
-                'salesToday',
-                'salesTodayAmount',
-
-                'salesThisMonth',
-                'salesThisMonthAmount',
-
-                'purchasesThisMonth',
-                'purchasesThisMonthAmount',
-
-                'totalProducts',
-                'totalCustomers',
-                'totalSuppliers',
-
-                'totalStock',
-
-                'unpaidSales',
-                'unpaidSalesAmount',
-
-                'salesChart',
-
-                'recentSales',
-                'recentPurchases'
-            )
-        );
+        return view('dashboard.admin', compact(
+            'salesToday',
+            'salesTodayAmount',
+            'averageTransactionToday',
+            'salesThisMonth',
+            'salesThisMonthAmount',
+            'paymentSummary',
+            'salesChart',
+            'recentOrders'
+        ));
     }
+
 }
